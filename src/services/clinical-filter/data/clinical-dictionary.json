@@ -1,0 +1,82 @@
+{
+  "enfermedad": {
+    "hipotiroidismo": {
+      "excluir_ingredientes": ["soya", "tofu", "edamame"],
+      "limitar": ["col", "brócoli", "coliflor"],
+      "explicacion": "Los bociógenos interfieren con la absorción de levotiroxina."
+    },
+    "hipertension": {
+      "limitar_nutriente": { "sodio_mg_max": 1500 },
+      "excluir_ingredientes": ["embutidos", "salsa de soya", "tocino"]
+    },
+    "sindrome_intestino_irritable": {
+      "excluir_ingredientes": [
+        "ajo",
+        "cebolla",
+        "frijoles",
+        "lentejas",
+        "leche de vaca",
+        "manzana"
+      ]
+    },
+    "enfermedad_renal_cronica": {
+      "excluir_ingredientes": [
+        "sal de mesa",
+        "embutidos",
+        "enlatados",
+        "palta",
+        "banana",
+        "naranja"
+      ],
+      "limitar": ["lacteos", "nueces", "carnes rojas"],
+      "limitar_nutriente": {
+        "potasio_mg_max": 2000,
+        "fosforo_mg_max": 800,
+        "sodio_mg_max": 1500
+      },
+      "explicacion": "Reducción de potasio, fósforo y sodio para evitar sobrecarga renal."
+    },
+    "gota": {
+      "excluir_ingredientes": [
+        "vísceras",
+        "mariscos",
+        "sardinas",
+        "anchoas",
+        "cerveza"
+      ],
+      "limitar": ["carnes rojas", "pescados azules", "fructosa"],
+      "explicacion": "Alimentos ricos en purinas elevan el ácido úrico, desencadenando crisis."
+    },
+    "diabetes_tipo_2": {
+      "excluir_ingredientes": [
+        "azucar refinada",
+        "jarabe de maiz",
+        "dulces",
+        "gaseosas"
+      ],
+      "limitar": ["arroz blanco", "pan blanco", "papa", "pasta regular"],
+      "limitar_nutriente": { "azucar_anadida_g_max": 25 },
+      "explicacion": "Control de carbohidratos de rápida absorción y azúcares añadidos para mantener la glucemia."
+    },
+    "sindrome_de_ovario_polquistico":{
+        "excluir_ingredientes":[
+            "pan_blanco", "jugo"
+        ],
+        "limitar":["lacteos"]
+    }
+  },
+  "interacciones_medicamentos": {
+    "anticoagulantes": {
+      "limitar": ["espinaca", "kale", "brócoli"],
+      "explicacion": "Interferencia con el metabolismo de la Vitamina K."
+    },
+    "estatinas": {
+      "limitar": ["toronja", "pomelo", "jugo de toronja"],
+      "explicacion": "Interfiere con el metabolismo hepático de las estatinas, aumentando riesgo de toxicidad."
+    },
+    "diureticos_ahorradores_potasio": {
+      "limitar": ["palta", "aguacate", "banana", "espinaca", "tomate", "papas"],
+      "explicacion": "Riesgo de hiperkalemia al combinar con fármacos que retienen potasio."
+    }
+  }
+}

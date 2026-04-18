@@ -1,0 +1,13 @@
+import { Module } from '@nestjs/common';
+import { ClinicalFilterController } from './clinical-filter.controller';
+import { DietPlanOrchestratorService } from './diet-plan-orchestrator.service';
+import { FiltroClinicoService } from './clinical-filter.service';
+import { NutricionalCalculatorModule } from '../nutricional-calculator/nutricional-calculator.module';
+import { RepositoryRecipesModule } from '../repository-recipes/repository-recipes.module';
+
+@Module({
+  imports: [NutricionalCalculatorModule, RepositoryRecipesModule],
+  providers: [FiltroClinicoService, DietPlanOrchestratorService],
+  controllers: [ClinicalFilterController],
+})
+export class ClinicalFilterModule { }
