@@ -85,6 +85,10 @@ export class RecetasRepositoryService implements OnModuleInit {
   buscarRecetasSeguras(
     filtros: BuscarRecetasSegurasFiltros,
   ): RecetaEpicurious[] {
+    const etiquetasRequeridasNormalizadas =
+      filtros.etiquetas_requeridas?.map((tag) => tag.toLowerCase().trim()) ??
+      [];
+
     return this.recetas
       .filter((receta) => {
         if (
@@ -111,9 +115,13 @@ export class RecetasRepositoryService implements OnModuleInit {
 
         if (tieneProhibidos) return false;
 
-        if (filtros.etiquetas_requeridas?.length) {
-          return filtros.etiquetas_requeridas.every((tag) =>
-            receta.categories.includes(tag),
+        if (etiquetasRequeridasNormalizadas.length) {
+          const categoriasNormalizadas = receta.categories.map((categoria) =>
+            categoria.toLowerCase().trim(),
+          );
+
+          return etiquetasRequeridasNormalizadas.every((tag) =>
+            categoriasNormalizadas.includes(tag),
           );
         }
 

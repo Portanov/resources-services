@@ -162,7 +162,13 @@ export class GeminiClientService {
         const recetas = (comidasDia[comida] ?? []) as unknown[];
         comidasNormalizadas[comida] = recetas
           .filter((receta) => receta && typeof receta === 'object')
-          .map((receta) => this.normalizarReceta(receta as Partial<RecetaDia>));
+          .flatMap((receta) => {
+            const recetaNormalizada = this.normalizarReceta(
+              receta as Partial<RecetaDia>,
+            );
+
+            return recetaNormalizada ? [recetaNormalizada] : [];
+          });
       }
 
       planDiarioNormalizado[dia] = comidasNormalizadas;
@@ -186,9 +192,14 @@ export class GeminiClientService {
     };
   }
 
-  private normalizarReceta(receta: Partial<RecetaDia>): RecetaDia {
+  private normalizarReceta(receta: Partial<RecetaDia>): RecetaDia | null {
+    const idNormalizado = receta.id ? String(receta.id).trim() : '';
+    if (!idNormalizado) {
+      return null;
+    }
+
     return {
-      id: receta.id ? String(receta.id) : '',
+      id: idNormalizado,
       nombre_traducido: receta.nombre_traducido
         ? String(receta.nombre_traducido)
         : 'Receta sin nombre',

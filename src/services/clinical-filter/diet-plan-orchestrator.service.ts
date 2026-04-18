@@ -5,6 +5,8 @@ import {
   RestriccionesClinicasResult,
 } from './clinical-filter.service';
 import {
+  EstiloVidaCalculable,
+  NivelActividad,
   NutricionalCalculoExtendido,
   NutricionalCalculatorService,
   PerfilFisicoCalculable,
@@ -14,6 +16,7 @@ import {
   RecetasRepositoryService,
 } from '../repository-recipes/repository-recipes.service';
 import {
+  EstiloVidaDto,
   PreferenciasDietaDto,
   PerfilClinicoDto,
   PerfilFisicoDto,
@@ -32,7 +35,9 @@ export interface MacronutrientesDiariosEstimados {
 export interface ParametrosDietaPayload {
   comidas_solicitadas: number;
   objetivo_calorico_diario: number;
+  nivel_actividad_resuelto: NivelActividad;
   macros_diarios_estimados: MacronutrientesDiariosEstimados;
+  enfoque_micronutrientes: string[];
 }
 
 export interface ReglasClinicasInquebrantablesPayload {
@@ -77,6 +82,7 @@ export class DietPlanOrchestratorService {
       this.nutricionalCalculatorService.calculateFromProfile(
         this.mapPerfilFisico(solicitud.perfil_fisico),
         this.mapPerfilClinicoCalculo(perfilClinico),
+        this.mapEstiloVidaCalculo(solicitud.estilo_vida),
       );
 
     const ingredientesProhibidos = Array.from(
@@ -106,16 +112,40 @@ export class DietPlanOrchestratorService {
       maxResultados: 25,
     });
 
+    const opcionesFallback =
+      opcionesBase.length > 0
+        ? opcionesBase
+        : this.recetasRepositoryService.buscarRecetasSeguras({
+            kcal_objetivo: caloriasPorComida,
+            margen: 350,
+            ingredientes_prohibidos: ingredientesProhibidos,
+            etiquetas_requeridas:
+              etiquetasRequeridas.length > 0 ? etiquetasRequeridas : undefined,
+            maxResultados: 25,
+          });
+
+    const opcionesSinEtiqueta =
+      opcionesFallback.length > 0
+        ? opcionesFallback
+        : this.recetasRepositoryService.buscarRecetasSeguras({
+            kcal_objetivo: caloriasPorComida,
+            margen: 450,
+            ingredientes_prohibidos: ingredientesProhibidos,
+            maxResultados: 25,
+          });
+
     const catalogoRecetasPermitidas: CatalogoRecetaPermitidaPayload[] =
-      opcionesBase;
+      opcionesSinEtiqueta;
 
     const payloadBase = {
       parametros_dieta: {
         comidas_solicitadas: solicitud.preferencias_dieta.comidas_por_dia,
         objetivo_calorico_diario: objetivoCaloricoDiario,
+        nivel_actividad_resuelto: calculosNutricionales.nivelActividadResuelto,
         macros_diarios_estimados: this.calcularMacrosDiariosEstimados(
           objetivoCaloricoDiario,
         ),
+        enfoque_micronutrientes: calculosNutricionales.objetivosMicronutrientes,
       },
       reglas_clinicas_inquebrantables: {
         ingredientes_prohibidos: ingredientesProhibidos,
@@ -149,7 +179,6 @@ export class DietPlanOrchestratorService {
       peso_kg: perfilFisico.peso_kg,
       altura_cm: perfilFisico.altura_cm,
       sexo_biologico: perfilFisico.sexo_biologico,
-      nivel_actividad: perfilFisico.nivel_actividad,
     };
   }
 
@@ -162,6 +191,11 @@ export class DietPlanOrchestratorService {
 
     return {
       objetivo: perfilClinico.objetivo,
+      enfermedades_cronicas: perfilClinico.enfermedades_cronicas,
+      alergias: perfilClinico.alergias,
+      medicamentos: perfilClinico.medicamentos,
+      fuma: perfilClinico.fuma,
+      consume_alcohol: perfilClinico.consume_alcohol,
       embarazo: perfilClinico.embarazo,
       trimestre_embarazo: perfilClinico.trimestre_embarazo,
       fase_menstrual: perfilClinico.fase_menstrual,
@@ -171,7 +205,31 @@ export class DietPlanOrchestratorService {
   private mapPerfilClinicoCalculo(
     perfilClinico: PerfilClinicoDto | null,
   ): PerfilClinicoCalculable | null {
-    return this.mapPerfilClinico(perfilClinico);
+    if (!perfilClinico) {
+      return null;
+    }
+
+    return {
+      objetivo: perfilClinico.objetivo,
+      fuma: perfilClinico.fuma,
+      consume_alcohol: perfilClinico.consume_alcohol,
+      embarazo: perfilClinico.embarazo,
+      trimestre_embarazo: perfilClinico.trimestre_embarazo,
+      fase_menstrual: perfilClinico.fase_menstrual,
+    };
+  }
+
+  private mapEstiloVidaCalculo(
+    estiloVida?: EstiloVidaDto,
+  ): EstiloVidaCalculable | null {
+    if (!estiloVida) {
+      return null;
+    }
+
+    return {
+      frecuencia_ejercicio_semana: estiloVida.frecuencia_ejercicio_semana,
+      horas_entrenamiento_diario: estiloVida.horas_entrenamiento_diario,
+    };
   }
 
   private resolverEtiquetasPorDieta(
@@ -203,15 +261,32 @@ export class DietPlanOrchestratorService {
     const embarazo = perfilClinico?.embarazo
       ? ` Embarazo activo${perfilClinico.trimestre_embarazo ? `, trimestre ${perfilClinico.trimestre_embarazo}` : ''}.`
       : '';
+    const consumoTabaco = perfilClinico?.fuma
+      ? ' Reporta consumo de tabaco: priorizar alimentos ricos en vitamina C, E, folato y omega-3.'
+      : '';
+    const consumoAlcohol = perfilClinico?.consume_alcohol
+      ? ' Reporta consumo de alcohol: reforzar tiamina (B1), B6, folato, magnesio y zinc.'
+      : '';
     const objetivo = perfilClinico?.objetivo
       ? ` OBJETIVO: ${this.formatearObjetivo(perfilClinico.objetivo)}.`
+      : '';
+    const estiloVida = solicitud.estilo_vida
+      ? ` Estilo de vida: entrena ${this.formatearFrecuencia(solicitud.estilo_vida.frecuencia_ejercicio_semana)} por semana durante ${this.formatearDuracion(solicitud.estilo_vida.horas_entrenamiento_diario)} por dia.`
       : '';
 
     return [
       `Paciente ${solicitud.perfil_fisico.sexo_biologico} de ${solicitud.perfil_fisico.edad} anios.`,
+      `Nivel de actividad resuelto automaticamente: ${calculos.nivelActividadResuelto}.`,
       `TMB base aproximada ${Math.round(calculos.tmbBase)} kcal y gasto total estimado ${Math.round(calculos.gastoEnergeticoTotal)} kcal.`,
       `OBJETIVO CALÓRICO FINAL: ${Math.round(calculos.caloriasFinalAjustadas)} kcal/día (ajuste por objetivo: ${calculos.ajusteObjetivo > 0 ? '+' : ''}${Math.round(calculos.ajusteObjetivo)} kcal).`,
+      `Ajuste por consumos: ${calculos.ajusteConsumos > 0 ? '+' : ''}${Math.round(calculos.ajusteConsumos)} kcal.`,
+      calculos.objetivosMicronutrientes.length > 0
+        ? `Micronutrientes prioritarios: ${calculos.objetivosMicronutrientes.join(', ')}.`
+        : '',
       objetivo,
+      estiloVida,
+      consumoTabaco,
+      consumoAlcohol,
       embarazo,
       faseMenstrual,
       restricciones.resumen_clinico,
@@ -231,6 +306,34 @@ export class DietPlanOrchestratorService {
         return 'Mantener peso actual (sin variación calórica)';
       default:
         return objetivo;
+    }
+  }
+
+  private formatearFrecuencia(frecuencia: string): string {
+    switch (frecuencia) {
+      case '1_2':
+        return '1-2 veces';
+      case '3_4':
+        return '3-4 veces';
+      case '5_plus':
+        return '5 o más veces';
+      default:
+        return frecuencia;
+    }
+  }
+
+  private formatearDuracion(duracion: string): string {
+    switch (duracion) {
+      case '30min':
+        return '30 minutos';
+      case '1hr':
+        return '1 hora';
+      case '2hrs':
+        return '2 horas';
+      case 'flexible':
+        return 'duracion flexible';
+      default:
+        return duracion;
     }
   }
 
@@ -256,6 +359,9 @@ export class DietPlanOrchestratorService {
       'NO INVENTES RECETAS: solo puedes usar las que vienen en el catalogo. Solo selecciona recetas con IDs presentes en el catalogo.',
       'SEGURIDAD: ninguna receta seleccionada puede contener los ingredientes_prohibidos. Valida cada ingrediente antes de incluir.',
       'MACROS: la suma de los macros de las recetas diarias debe acercarse lo mas posible al objetivo_calorico_diario. Este objetivo ya incluye ajustes por el objetivo del paciente (bajar, subir o mantener peso).',
+      'ESTILO DE VIDA: considera nivel_actividad_resuelto, frecuencia_ejercicio_semana y horas_entrenamiento_diario para seleccionar comidas acordes al gasto energetico.',
+      'OTROS CONSUMOS: si el contexto indica tabaco o alcohol, prioriza recetas con alta densidad nutricional y micronutrientes para compensar posibles deficiencias vitaminicas/minerales.',
+      'MICRONUTRIENTES: usa enfoque_micronutrientes para reforzar recomendaciones (ejemplo: vitamina C/E, folato, B1, B6, magnesio, zinc).',
       'OBJETIVO CALORICO: respeta siempre el objetivo_calorico_diario proporcionado. Si es menor a lo normal, el paciente intenta bajar de peso. Si es mayor, intenta subir. Si es aproximado al gasto normal, intenta mantener.',
       'RECOMENDACIONES: incluye un array de recomendaciones personalizadas basadas en ingredientes_prohibidos, limites_nutricionales_diarios y el OBJETIVO del paciente. Para bajar peso: recomendaciones sobre deficit calórico. Para subir: sobre proteína e hidratos. Para mantener: sobre equilibrio nutricional.',
       'TRADUCCION: responde con los nombres de recetas traducidos al espanol, sin alterar los IDs ni valores numericos.',
