@@ -129,6 +129,18 @@ export class ClinicProfileService {
     return this.upsertClinicProfile(dto);
   }
 
+  async getClinicProfileByUserId(userId: string) {
+    const profile = await this.clinicProfileRepository.findOne({
+      where: { userId },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('No existe perfil clínico para ese usuario');
+    }
+
+    return profile;
+  }
+
   async deleteClinicProfile(dto: DeleteClinicProfileDto) {
     const profile = await this.clinicProfileRepository.findOne({
       where: { userId: dto.userId },
