@@ -14,7 +14,6 @@ import { AuthModule } from './services/auth/auth.module';
     NutricionalCalculatorModule,
     ClinicalFilterModule,
     ExercisePlanModule,
-    // Removed invalid character 'A'
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',

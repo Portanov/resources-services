@@ -5,10 +5,11 @@ import { AuthService } from './auth.service';
 import { UserEntity } from './entities/user.entity';
 import { ClinicProfileEntity } from './entities/clinic-profile.entity';
 import { ClinicProfileService } from './clinic-profile.service';
+import { UsersService } from './users.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([UserEntity, ClinicProfileEntity])],
-  providers: [AuthService, ClinicProfileService],
+  providers: [UsersService, AuthService, ClinicProfileService],
   controllers: [AuthController],
   exports: [AuthService, ClinicProfileService],
 })
