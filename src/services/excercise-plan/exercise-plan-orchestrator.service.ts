@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { SolicitudPlanEjercicioDto, PlanEjercicioGenerado } from './dto/exercise-plan-request.dto';
@@ -7,6 +7,7 @@ import { PlanEjercicio, PlanEjercicioDocument } from './schemas/excercise-plan.s
 import { ClinicProfileService } from '../auth/clinic-profile.service';
 import type { CreateClinicProfileDto } from '../auth/dto/clinic-profile.dto';
 import { GymPlanService } from '../plans/gym.service';
+import { ExercisePlanDocument } from '../plans/schemas/gym-plan.schema';
 
 export interface ParametrosEjercicioSimplificado {
   nivel_experiencia: string;
@@ -86,6 +87,10 @@ export class ExercisePlanOrchestratorService {
       'REGLAS DE NIVEL: Para "Principiante", prioriza técnica, máquinas guiadas (si aplica) y menor volumen (menos series). Para niveles superiores, aumenta el volumen e incluye ejercicios compuestos.',
       'FORMATO DE RESPUESTA: Únicamente JSON válido. Estructura esperada: {rutina_semanal: {dia_1: [{ejercicio, series, repeticiones, descanso_segundos}], dia_2: [...]}, resumen_volumen_semanal: string, recomendaciones_personalizadas: [string]}.',
     ].join(' ');
+  }
+
+  async obtenerPlanActualDelUsuario(userId: string) {
+    return await this.gymService.getExercisePlanByUserId(userId);
   }
 
   // Aquí es donde manejamos toda la asincronía (await)

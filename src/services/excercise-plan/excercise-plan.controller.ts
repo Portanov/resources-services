@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ExercisePlanOrchestratorService } from './exercise-plan-orchestrator.service';
 import type { GeminiExercisePayload } from './exercise-plan-orchestrator.service';
 import { SolicitudPlanEjercicioDto } from './dto/exercise-plan-request.dto';
@@ -8,6 +8,11 @@ export class ExercisePlanController {
   constructor(
     private readonly exercisePlanOrchestratorService: ExercisePlanOrchestratorService,
   ) {}
+
+  @Get('usuario/:userId')
+  async getByUserId(@Param('userId') userId: string) {
+    return await this.exercisePlanOrchestratorService.obtenerPlanActualDelUsuario(userId);
+  }
 
   @Post('ejercicios')
   async construirPlan(

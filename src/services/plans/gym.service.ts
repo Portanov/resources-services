@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { DeleteResult, Model } from 'mongoose';
+import { DeleteResult, isValidObjectId, Model } from 'mongoose';
 import { ExercisePlan, ExercisePlanDocument } from './schemas/gym-plan.schema';
 
 @Injectable()
@@ -37,5 +37,18 @@ export class GymPlanService {
     }
 
     return result;
+  }
+
+  async getExercisePlanByUserId(userId: string): Promise<ExercisePlanDocument> {
+    const plan = await this.exercisePlanModel
+      .findOne({ usuario_id: userId }) // Filtra por el campo de usuario
+      .sort({ createdAt: -1 })        // Trae el más reciente
+      .exec();
+
+    if (!plan) {
+      throw new NotFoundException(`No se encontró un plan de ejercicios para el usuario: ${userId}`);
+    }
+    
+    return plan;
   }
 }
