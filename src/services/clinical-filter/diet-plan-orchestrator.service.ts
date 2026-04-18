@@ -78,13 +78,8 @@ export class DietPlanOrchestratorService {
   async sincronizarPerfilClinicoDesdeDieta(
     solicitud: SolicitudPlanDietaDto,
   ): Promise<void> {
-    const userId = this.toUserId(solicitud.usuario_id);
-    if (!userId) {
-      return;
-    }
-
     await this.clinicProfileService.upsertClinicProfile(
-      this.mapDietaToClinicProfileDto(solicitud, userId),
+      this.mapDietaToClinicProfileDto(solicitud, solicitud.usuario_id),
     );
   }
 
@@ -480,13 +475,5 @@ export class DietPlanOrchestratorService {
       default:
         return undefined;
     }
-  }
-
-  private toUserId(usuarioId: number): string | null {
-    const raw = String(usuarioId).trim();
-    const uuidV4Regex =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-    return uuidV4Regex.test(raw) ? raw : null;
   }
 }

@@ -37,8 +37,10 @@ export class ClinicProfileService {
     const perfilActividadActual =
       (planEjercicioActual['perfilActividad'] as Record<string, unknown>) ?? {};
     const preferenciasEjercicioActual =
-      (planEjercicioActual['preferenciasEjercicio'] as Record<string, unknown>) ??
-      {};
+      (planEjercicioActual['preferenciasEjercicio'] as Record<
+        string,
+        unknown
+      >) ?? {};
 
     const preferenciasLogistica = {
       ...preferenciasActuales,

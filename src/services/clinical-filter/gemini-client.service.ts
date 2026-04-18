@@ -174,11 +174,15 @@ export class GeminiClientService {
     return this.normalizarPlanDieta(planDieta);
   }
 
-  async generarPlanEntrenamiento(payload: GeminiExercisePayload): Promise<PlanEjercicioGenerado> {
+  async generarPlanEntrenamiento(
+    payload: GeminiExercisePayload,
+  ): Promise<PlanEjercicioGenerado> {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
-    
+
     if (!apiKey) {
-      throw new InternalServerErrorException('Falta GEMINI_API_KEY en variables de entorno');
+      throw new InternalServerErrorException(
+        'Falta GEMINI_API_KEY en variables de entorno',
+      );
     }
 
     const body = {
@@ -188,9 +192,11 @@ export class GeminiClientService {
       contents: [
         {
           role: 'user',
-          parts: [{
-            text: `CONTEXTO_JSON:\n${payload.gemini_request.contexto_string}\n\nTAREA:\n${payload.gemini_request.prompt_usuario}`,
-          }],
+          parts: [
+            {
+              text: `CONTEXTO_JSON:\n${payload.gemini_request.contexto_string}\n\nTAREA:\n${payload.gemini_request.prompt_usuario}`,
+            },
+          ],
         },
       ],
       generationConfig: {
@@ -207,7 +213,7 @@ export class GeminiClientService {
       body: JSON.stringify(body),
     });
 
-    const data: any = await response.json();
+    const data: unknown = await response.json();
 
     if (!response.ok) {
       throw new InternalServerErrorException({
@@ -217,9 +223,12 @@ export class GeminiClientService {
     }
 
     // Extraer el texto de la respuesta
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const parsed = data as GeminiGenerateContentResponse;
+    const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
-      throw new InternalServerErrorException('Gemini no devolvió contenido válido');
+      throw new InternalServerErrorException(
+        'Gemini no devolvió contenido válido',
+      );
     }
 
     try {
@@ -235,7 +244,7 @@ export class GeminiClientService {
       throw new InternalServerErrorException({
         message: 'La estructura de ejercicio devuelta por Gemini es inválida',
         rawText: text,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       });
     }
   }

@@ -14,7 +14,7 @@ export class PlansService {
     return newDiet.save();
   }
 
-  async getDietByUser(userId: number): Promise<DietPlanDocument> {
+  async getDietByUser(userId: string): Promise<DietPlanDocument> {
     const diet = await this.dietPlanModel
       .findOne({ usuario_id: userId })
       .exec();
@@ -24,7 +24,7 @@ export class PlansService {
     return diet;
   }
 
-  async eliminateDiet(userId: number): Promise<DeleteResult> {
+  async eliminateDiet(userId: string): Promise<DeleteResult> {
     const result = await this.dietPlanModel
       .deleteOne({ usuario_id: userId })
       .exec();

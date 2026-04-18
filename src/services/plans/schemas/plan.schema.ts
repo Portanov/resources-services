@@ -60,7 +60,7 @@ export class WeeklyDietPlan {
 @Schema({ timestamps: true, collection: 'diet_plans' })
 export class DietPlan {
   @Prop({ required: true, index: true })
-  usuario_id!: number;
+  usuario_id!: string;
 
   @Prop({ type: WeeklyDietPlan, required: true })
   plan_diario!: WeeklyDietPlan;

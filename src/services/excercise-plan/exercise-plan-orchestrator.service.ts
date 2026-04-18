@@ -2,9 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { SolicitudPlanEjercicioDto } from './dto/exercise-plan-request.dto';
-import { GeminiClientService } from '../clinical-filter/gemini-client.service'; // Ajusta la ruta según tu estructura
+import { GeminiClientService } from '../clinical-filter/gemini-client.service';
 import type { PlanEjercicioGenerado } from './dto/exercise-plan-request.dto';
 import { PlanEjercicio, PlanEjercicioDocument } from './schemas/excercise-plan.schema';
+import { ClinicProfileService } from '../auth/clinic-profile.service';
+import type { CreateClinicProfileDto } from '../auth/dto/clinic-profile.dto';
 
 export interface ParametrosEjercicioSimplificado {
   nivel_experiencia: string;
@@ -30,10 +32,27 @@ export interface GeminiRequestPayload {
 export class ExercisePlanOrchestratorService {
   constructor(
     private readonly geminiClientService: GeminiClientService,
-    @InjectModel(PlanEjercicio.name) private planEjercicioModel: Model<PlanEjercicioDocument>,
+    private readonly clinicProfileService: ClinicProfileService,
+    @InjectModel(PlanEjercicio.name)
+    private readonly planEjercicioModel: Model<PlanEjercicioDocument>,
   ) {}
 
-  construirPayloadGemini(solicitud: SolicitudPlanEjercicioDto): GeminiExercisePayload {
+  async sincronizarPerfilClinicoDesdeEjercicio(
+    solicitud: SolicitudPlanEjercicioDto,
+  ): Promise<void> {
+    const userId = this.toUserId(solicitud.usuario_id);
+    if (!userId) {
+      return;
+    }
+
+    await this.clinicProfileService.upsertClinicProfile(
+      this.mapEjercicioToClinicProfileDto(solicitud, userId),
+    );
+  }
+
+  construirPayloadGemini(
+    solicitud: SolicitudPlanEjercicioDto,
+  ): GeminiExercisePayload {
     const { perfil_actividad, preferencias_ejercicio } = solicitud;
 
     const payloadBase = {
@@ -73,22 +92,42 @@ export class ExercisePlanOrchestratorService {
     id_guardado: string;
   }> {
     const payload = this.construirPayloadGemini(solicitud);
-    
-    // Suponiendo que GeminiClientService tiene este método
+
     const planGenerado = await this.geminiClientService.generarPlanEntrenamiento(payload);
 
-    // Guardado en MongoDB
     const nuevoPlan = new this.planEjercicioModel({
       usuario_id: solicitud.usuario_id,
       parametros_iniciales: solicitud,
       plan_generado: planGenerado,
     });
-    
+
     const planGuardado = await nuevoPlan.save();
 
     return {
       plan_generado: planGenerado,
       id_guardado: planGuardado._id.toString(),
     };
+  }
+
+  private mapEjercicioToClinicProfileDto(
+    solicitud: SolicitudPlanEjercicioDto,
+    userId: string,
+  ): CreateClinicProfileDto {
+    return {
+      userId,
+      haceEjercicio: solicitud.perfil_actividad.hace_ejercicio,
+      diasPorSemana: solicitud.perfil_actividad.dias_por_semana,
+      nivelActual: solicitud.perfil_actividad.nivel_actual,
+      metaPrincipal: solicitud.preferencias_ejercicio.meta_principal,
+      lugarPreferido: solicitud.preferencias_ejercicio.lugar_preferido,
+    };
+  }
+
+  private toUserId(usuarioId: string): string | null {
+    const raw = String(usuarioId).trim();
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+    return uuidRegex.test(raw) ? raw : null;
   }
 }
