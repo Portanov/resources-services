@@ -58,6 +58,33 @@ const DIAS_PLAN = [
 ] as const;
 const COMIDAS_DIA = ['desayuno', 'comida', 'cena'] as const;
 
+<<<<<<< Updated upstream
+=======
+export interface Ejercicio {
+  nombre: string;
+  series: number;
+  repeticiones: string; // "12" o "al fallo" o "5 minutos"
+  descanso_segundos: number;
+  notas_tecnicas?: string;
+}
+
+export interface RutinaSemanal {
+  lunes: Ejercicio[];
+  martes: Ejercicio[];
+  miercoles: Ejercicio[];
+  jueves: Ejercicio[];
+  viernes: Ejercicio[];
+  sabado: Ejercicio[];
+  domingo: Ejercicio[];
+}
+
+export interface PlanEjercicioGenerado {
+  rutina_semanal: Record<string, unknown>;
+  resumen_volumen_semanal: string;
+  recomendaciones_personalizadas: string[];
+}
+
+>>>>>>> Stashed changes
 @Injectable()
 export class GeminiClientService {
   constructor(private readonly configService: ConfigService) {}
