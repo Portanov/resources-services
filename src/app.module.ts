@@ -6,10 +6,12 @@ import { NutricionalCalculatorModule } from './services/nutricional-calculator/n
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ExercisePlanModule } from './services/excercise-plan/excercise-plan.module';
 @Module({
   imports: [
     NutricionalCalculatorModule,
     ClinicalFilterModule,
+    ExercisePlanModule,
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',

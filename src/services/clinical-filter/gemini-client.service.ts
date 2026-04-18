@@ -1,6 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { GeminiDietPayload } from './diet-plan-orchestrator.service';
+import type { GeminiExercisePayload } from '../excercise-plan/exercise-plan-orchestrator.service';
 
 interface GeminiCandidatePart {
   text?: string;
@@ -47,6 +48,30 @@ export interface PlanDietaGenerado {
   resumen_calorico_diario: number;
   recomendaciones_personalizadas: string[];
   advertencias_ingredientes: string[];
+}
+
+export interface Ejercicio {
+  nombre: string;
+  series: number;
+  repeticiones: string; // "12" o "al fallo" o "5 minutos"
+  descanso_segundos: number;
+  notas_tecnicas?: string;
+}
+
+export interface RutinaSemanal {
+  lunes: Ejercicio[];
+  martes: Ejercicio[];
+  miercoles: Ejercicio[];
+  jueves: Ejercicio[];
+  viernes: Ejercicio[];
+  sabado: Ejercicio[];
+  domingo: Ejercicio[];
+}
+
+export interface PlanEjercicioGenerado {
+  rutina_semanal: Record<string, any>;
+  resumen_volumen_semanal: string;
+  recomendaciones_personalizadas: string[];
 }
 
 @Injectable()
@@ -138,5 +163,71 @@ export class GeminiClientService {
     }
 
     return planDieta;
+  }
+
+  async generarPlanEntrenamiento(payload: GeminiExercisePayload): Promise<PlanEjercicioGenerado> {
+    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
+    
+    if (!apiKey) {
+      throw new InternalServerErrorException('Falta GEMINI_API_KEY en variables de entorno');
+    }
+
+    const body = {
+      systemInstruction: {
+        parts: [{ text: payload.gemini_request.system_instruction }],
+      },
+      contents: [
+        {
+          role: 'user',
+          parts: [{
+            text: `CONTEXTO_JSON:\n${payload.gemini_request.contexto_string}\n\nTAREA:\n${payload.gemini_request.prompt_usuario}`,
+          }],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.3, // Un poco más de creatividad para variedad de ejercicios
+        responseMimeType: 'application/json',
+      },
+    };
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${payload.gemini_request.model}:generateContent?key=${apiKey}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const data: any = await response.json();
+
+    if (!response.ok) {
+      throw new InternalServerErrorException({
+        message: 'Error en API Gemini (Exercise)',
+        details: data,
+      });
+    }
+
+    // Extraer el texto de la respuesta
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) {
+      throw new InternalServerErrorException('Gemini no devolvió contenido válido');
+    }
+
+    try {
+      const planParsed = JSON.parse(text) as PlanEjercicioGenerado;
+
+      // VALIDACIÓN ESPECÍFICA DE EJERCICIO
+      if (!planParsed.rutina_semanal) {
+        throw new Error('Falta la propiedad "rutina_semanal"');
+      }
+
+      return planParsed;
+    } catch (error) {
+      throw new InternalServerErrorException({
+        message: 'La estructura de ejercicio devuelta por Gemini es inválida',
+        rawText: text,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
   }
 }
