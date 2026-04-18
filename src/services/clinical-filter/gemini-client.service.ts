@@ -58,8 +58,6 @@ const DIAS_PLAN = [
 ] as const;
 const COMIDAS_DIA = ['desayuno', 'comida', 'cena'] as const;
 
-<<<<<<< Updated upstream
-=======
 export interface Ejercicio {
   nombre: string;
   series: number;
@@ -84,7 +82,6 @@ export interface PlanEjercicioGenerado {
   recomendaciones_personalizadas: string[];
 }
 
->>>>>>> Stashed changes
 @Injectable()
 export class GeminiClientService {
   constructor(private readonly configService: ConfigService) {}

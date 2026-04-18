@@ -13,6 +13,7 @@ import { AuthModule } from './services/auth/auth.module';
     AuthModule,
     NutricionalCalculatorModule,
     ClinicalFilterModule,
+    ExercisePlanModule,
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
