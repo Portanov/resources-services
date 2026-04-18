@@ -5,13 +5,14 @@ import { GeminiClientService } from '../clinical-filter/gemini-client.service';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PlanEjercicio, PlanEjercicioSchema } from './schemas/excercise-plan.schema';
 import { AuthModule } from '../auth/auth.module';
+import { GymModule } from "../plans/gym.module";
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: PlanEjercicio.name, schema: PlanEjercicioSchema },
     ]),
-    AuthModule,
+    AuthModule, GymModule
   ],
   controllers: [ExercisePlanController],
   providers: [ExercisePlanOrchestratorService, GeminiClientService],

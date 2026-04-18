@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { SolicitudPlanEjercicioDto } from './dto/exercise-plan-request.dto';
+import { SolicitudPlanEjercicioDto, PlanEjercicioGenerado } from './dto/exercise-plan-request.dto';
 import { GeminiClientService } from '../clinical-filter/gemini-client.service';
-import type { PlanEjercicioGenerado } from './dto/exercise-plan-request.dto';
 import { PlanEjercicio, PlanEjercicioDocument } from './schemas/excercise-plan.schema';
 import { ClinicProfileService } from '../auth/clinic-profile.service';
 import type { CreateClinicProfileDto } from '../auth/dto/clinic-profile.dto';
+import { GymPlanService } from '../plans/gym.service';
 
 export interface ParametrosEjercicioSimplificado {
   nivel_experiencia: string;
@@ -33,6 +33,7 @@ export class ExercisePlanOrchestratorService {
   constructor(
     private readonly geminiClientService: GeminiClientService,
     private readonly clinicProfileService: ClinicProfileService,
+    private readonly gymService: GymPlanService,
     @InjectModel(PlanEjercicio.name)
     private readonly planEjercicioModel: Model<PlanEjercicioDocument>,
   ) {}
@@ -97,13 +98,15 @@ export class ExercisePlanOrchestratorService {
 
     const planGenerado = await this.geminiClientService.generarPlanEntrenamiento(payload);
 
-    const nuevoPlan = new this.planEjercicioModel({
+    const planGuardado = await this.gymService.saveExercisePlan({
       usuario_id: solicitud.usuario_id,
       parametros_iniciales: solicitud,
-      plan_generado: planGenerado,
+      rutina_semanal: planGenerado.rutina_semanal,
+      resumen_volumen_semanal: planGenerado.resumen_volumen_semanal,
+      recomendaciones_personalizadas: planGenerado.recomendaciones_personalizadas,
+      modelo_ia: 'gemini-2.5-flash',
+      version: 1,
     });
-
-    const planGuardado = await nuevoPlan.save();
 
     return {
       plan_generado: planGenerado,
