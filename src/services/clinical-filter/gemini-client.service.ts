@@ -205,6 +205,8 @@ export class GeminiClientService {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      // Le damos 30 segundos de tolerancia antes de que tire error
+      signal: AbortSignal.timeout(30000), 
     });
 
     const data: any = await response.json();

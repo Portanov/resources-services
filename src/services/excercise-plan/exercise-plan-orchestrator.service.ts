@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { SolicitudPlanEjercicioDto } from './dto/exercise-plan-request.dto';
-import { GeminiClientService } from '../clinical-filter/gemini-client.service'; // Ajusta la ruta según tu estructura
-import type { PlanEjercicioGenerado } from './dto/exercise-plan-request.dto';
+import { SolicitudPlanEjercicioDto, PlanEjercicioGenerado } from './dto/exercise-plan-request.dto';
+import { GeminiClientService } from '../clinical-filter/gemini-client.service'; 
 import { PlanEjercicio, PlanEjercicioDocument } from './schemas/excercise-plan.schema';
+import { GymPlanService } from '../plans/gym.service';
 
 export interface ParametrosEjercicioSimplificado {
   nivel_experiencia: string;
@@ -30,9 +30,11 @@ export interface GeminiRequestPayload {
 export class ExercisePlanOrchestratorService {
   constructor(
     private readonly geminiClientService: GeminiClientService,
+    private readonly gymService: GymPlanService, // Inyectamos el servicio de base de datos
     @InjectModel(PlanEjercicio.name) private planEjercicioModel: Model<PlanEjercicioDocument>,
   ) {}
 
+  // Esta función ahora es puramente síncrona y se encarga solo de preparar los datos
   construirPayloadGemini(solicitud: SolicitudPlanEjercicioDto): GeminiExercisePayload {
     const { perfil_actividad, preferencias_ejercicio } = solicitud;
 
@@ -52,7 +54,7 @@ export class ExercisePlanOrchestratorService {
         model: 'gemini-2.5-flash',
         system_instruction: this.construirInstruccionSistemaGemini(),
         contexto_string: JSON.stringify(payloadBase),
-        prompt_usuario: `Genera un plan de entrenamiento estructurado para un usuario nivel ${perfil_actividad.nivel_actual} con objetivo principal de ${preferencias_ejercicio.meta_principal}. Devuelve un JSON estricto con: (1) rutina_semanal dividida por días de la semana (ej. "Lunes", "Martes") respetando una frecuencia de ${perfil_actividad.dias_por_semana}, adaptando los ejercicios para hacerlos en ${preferencias_ejercicio.lugar_preferido} (incluyendo series, repeticiones y descansos en segundos), (2) resumen_volumen_semanal, y (3) recomendaciones_personalizadas sobre progresión segura. Traduce los ejercicios al español.`,
+        prompt_usuario: `Genera un plan de entrenamiento estructurado para un usuario nivel ${perfil_actividad.nivel_actual} con objetivo principal de ${preferencias_ejercicio.meta_principal}. Devuelve un JSON estricto con: (1) rutina_semanal dividida por días de la semana (ej. "dia_1", "dia_2") respetando una frecuencia de ${perfil_actividad.dias_por_semana}, adaptando los ejercicios para hacerlos en ${preferencias_ejercicio.lugar_preferido} (incluyendo series, repeticiones y descansos en segundos), (2) resumen_volumen_semanal, y (3) recomendaciones_personalizadas sobre progresión segura. Traduce los ejercicios al español.`,
       },
     };
   }
@@ -68,23 +70,27 @@ export class ExercisePlanOrchestratorService {
     ].join(' ');
   }
 
+  // Aquí es donde manejamos toda la asincronía (await)
   async construirYGenerarConGemini(solicitud: SolicitudPlanEjercicioDto): Promise<{
     plan_generado: PlanEjercicioGenerado;
     id_guardado: string;
   }> {
+    // 1. Construimos el payload (Síncrono)
     const payload = this.construirPayloadGemini(solicitud);
     
-    // Suponiendo que GeminiClientService tiene este método
+    // 2. Generamos el plan con Gemini (Asíncrono)
     const planGenerado = await this.geminiClientService.generarPlanEntrenamiento(payload);
 
-    // Guardado en MongoDB
-    const nuevoPlan = new this.planEjercicioModel({
+    // 3. Guardamos en MongoDB usando el servicio especializado (Asíncrono)
+    const planGuardado = await this.gymService.saveExercisePlan({
       usuario_id: solicitud.usuario_id,
       parametros_iniciales: solicitud,
-      plan_generado: planGenerado,
+      rutina_semanal: planGenerado.rutina_semanal,
+      resumen_volumen_semanal: planGenerado.resumen_volumen_semanal,
+      recomendaciones_personalizadas: planGenerado.recomendaciones_personalizadas,
+      modelo_ia: 'gemini-2.5-flash',
+      version: 1,
     });
-    
-    const planGuardado = await nuevoPlan.save();
 
     return {
       plan_generado: planGenerado,
