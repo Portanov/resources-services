@@ -5,7 +5,6 @@ import { ClinicalFilterModule } from './services/clinical-filter/clinical-filter
 import { NutricionalCalculatorModule } from './services/nutricional-calculator/nutricional-calculator.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule } from '@nestjs/config';
-
 @Module({
   imports: [
     NutricionalCalculatorModule,

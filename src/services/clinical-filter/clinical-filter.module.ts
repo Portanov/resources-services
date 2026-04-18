@@ -4,10 +4,15 @@ import { DietPlanOrchestratorService } from './diet-plan-orchestrator.service';
 import { FiltroClinicoService } from './clinical-filter.service';
 import { NutricionalCalculatorModule } from '../nutricional-calculator/nutricional-calculator.module';
 import { RepositoryRecipesModule } from '../repository-recipes/repository-recipes.module';
+import { GeminiClientService } from './gemini-client.service';
 
 @Module({
   imports: [NutricionalCalculatorModule, RepositoryRecipesModule],
-  providers: [FiltroClinicoService, DietPlanOrchestratorService],
+  providers: [
+    GeminiClientService,
+    FiltroClinicoService,
+    DietPlanOrchestratorService,
+  ],
   controllers: [ClinicalFilterController],
 })
-export class ClinicalFilterModule { }
+export class ClinicalFilterModule {}

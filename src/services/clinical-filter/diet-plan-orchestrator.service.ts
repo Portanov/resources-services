@@ -19,6 +19,8 @@ import {
   PerfilFisicoDto,
   SolicitudPlanDietaDto,
 } from './dto/diet-plan-request.dto';
+import { GeminiClientService } from './gemini-client.service';
+import type { PlanDietaGenerado } from './gemini-client.service';
 
 export interface MacronutrientesDiariosEstimados {
   proteina_g: number;
@@ -60,6 +62,7 @@ export class DietPlanOrchestratorService {
     private readonly filtroClinicoService: FiltroClinicoService,
     private readonly nutricionalCalculatorService: NutricionalCalculatorService,
     private readonly recetasRepositoryService: RecetasRepositoryService,
+    private readonly geminiClientService: GeminiClientService,
   ) {}
 
   construirPayloadGemini(solicitud: SolicitudPlanDietaDto): GeminiDietPayload {
@@ -127,11 +130,11 @@ export class DietPlanOrchestratorService {
     return {
       ...payloadBase,
       gemini_request: {
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.5-flash',
         system_instruction: this.construirInstruccionSistemaGemini(),
         contexto_string: JSON.stringify(payloadBase),
         prompt_usuario:
-          'Genera la dieta utilizando exclusivamente la informacion del contexto. Devuelve la respuesta en JSON estricto, traduce los nombres de las recetas al español y conserva los IDs originales de las recetas seleccionadas.',
+          'Genera un plan de dieta para 5 dias (lunes a viernes) con 3 comidas cada dia. Devuelve JSON estricto con: (1) plan_diario con estructura por dia y comida, (2) resumen_calorico_diario, (3) recomendaciones_personalizadas sobre la dieta, (4) advertencias_ingredientes con los productos a evitar y por que. Usa unicamente recetas del catalogo, traduce nombres al espanol y conserva IDs originales.',
       },
     };
   }
@@ -230,13 +233,28 @@ export class DietPlanOrchestratorService {
 
   private construirInstruccionSistemaGemini(): string {
     return [
-      'Eres un algoritmo clinico de nutricion.',
-      'Tu tarea es armar un menu seleccionando unicamente recetas del arreglo catalogo_recetas_permitidas.',
-      'NO INVENTES RECETAS: solo puedes usar las que vienen en el catalogo.',
-      'SEGURIDAD: ninguna receta seleccionada puede contener los ingredientes_prohibidos.',
-      'MATEMATICAS: la suma de los macros de las recetas seleccionadas debe acercarse lo mas posible al objetivo_calorico_diario.',
-      'TRADUCCION: responde con las recetas y descripciones traducidas al espanol, sin alterar los IDs ni los valores numericos.',
-      'FORMATO: devuelve la respuesta estrictamente en JSON, incluyendo un resumen diario y el arreglo de comidas con los IDs de las recetas elegidas.',
+      'Eres un algoritmo clinico de nutricion especializado en diseño personalizado de dietas.',
+      'Tu tarea es armar un plan de comidas para 5 dias (lunes a viernes) seleccionando unicamente recetas del arreglo catalogo_recetas_permitidas.',
+      'ESTRUCTURA REQUERIDA: cada dia debe tener exactamente 3 comidas (desayuno, comida, cena).',
+      'NO INVENTES RECETAS: solo puedes usar las que vienen en el catalogo. Solo selecciona recetas con IDs presentes en el catalogo.',
+      'SEGURIDAD: ninguna receta seleccionada puede contener los ingredientes_prohibidos. Valida cada ingrediente antes de incluir.',
+      'MACROS: la suma de los macros de las recetas diarias debe acercarse lo mas posible al objetivo_calorico_diario.',
+      'RECOMENDACIONES: incluye un array de recomendaciones personalizadas basadas en ingredientes_prohibidos y limites_nutricionales_diarios. Advierte sobre productos a evitar y sus razones.',
+      'TRADUCCION: responde con los nombres de recetas traducidos al espanol, sin alterar los IDs ni valores numericos.',
+      'FORMATO RESPUESTA: JSON con estructura: {plan_diario: {lunes,martes,miercoles,jueves,viernes: {desayuno,comida,cena: [{id,nombre_traducido,calorias,proteina,carbohidratos,grasas,sodio}]}}, resumen_calorico_diario: number, recomendaciones_personalizadas: [string], advertencias_ingredientes: [string]}.',
     ].join(' ');
+  }
+
+  async construirYGenerarConGemini(solicitud: SolicitudPlanDietaDto): Promise<{
+    payload_enviado_a_gemini: GeminiRequestPayload;
+    plan_generado: PlanDietaGenerado;
+  }> {
+    const payload = this.construirPayloadGemini(solicitud);
+    const planGenerado = await this.geminiClientService.generarPlan(payload);
+
+    return {
+      payload_enviado_a_gemini: payload.gemini_request,
+      plan_generado: planGenerado,
+    };
   }
 }
