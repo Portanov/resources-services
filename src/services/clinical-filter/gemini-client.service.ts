@@ -78,7 +78,7 @@ export interface RutinaSemanal {
 }
 
 export interface PlanEjercicioGenerado {
-  rutina_semanal: Record<string, any>;
+  rutina_semanal: Record<string, unknown>;
   resumen_volumen_semanal: string;
   recomendaciones_personalizadas: string[];
 }

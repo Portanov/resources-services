@@ -25,6 +25,8 @@ import {
 import { GeminiClientService } from './gemini-client.service';
 import type { PlanDietaGenerado } from './gemini-client.service';
 import { PlansService } from '../plans/plans.service';
+import { ClinicProfileService } from '../auth/clinic-profile.service';
+import type { CreateClinicProfileDto } from '../auth/dto/clinic-profile.dto';
 
 export interface MacronutrientesDiariosEstimados {
   proteina_g: number;
@@ -70,7 +72,21 @@ export class DietPlanOrchestratorService {
     private readonly recetasRepositoryService: RecetasRepositoryService,
     private readonly geminiClientService: GeminiClientService,
     private readonly plansService: PlansService,
+    private readonly clinicProfileService: ClinicProfileService,
   ) {}
+
+  async sincronizarPerfilClinicoDesdeDieta(
+    solicitud: SolicitudPlanDietaDto,
+  ): Promise<void> {
+    const userId = this.toUserId(solicitud.usuario_id);
+    if (!userId) {
+      return;
+    }
+
+    await this.clinicProfileService.upsertClinicProfile(
+      this.mapDietaToClinicProfileDto(solicitud, userId),
+    );
+  }
 
   construirPayloadGemini(solicitud: SolicitudPlanDietaDto): GeminiDietPayload {
     const perfilClinico = solicitud.perfil_clinico ?? null;
@@ -385,5 +401,92 @@ export class DietPlanOrchestratorService {
       payload_enviado_a_gemini: payload.gemini_request,
       plan_generado: planGenerado,
     };
+  }
+
+  private mapDietaToClinicProfileDto(
+    solicitud: SolicitudPlanDietaDto,
+    userId: string,
+  ): CreateClinicProfileDto {
+    const perfilClinico = solicitud.perfil_clinico;
+    const estiloVida = solicitud.estilo_vida;
+
+    return {
+      userId,
+      pesoKg: solicitud.perfil_fisico.peso_kg,
+      alturaCm: solicitud.perfil_fisico.altura_cm,
+      edad: solicitud.perfil_fisico.edad,
+      sexo: this.mapSexoBiologico(solicitud.perfil_fisico.sexo_biologico),
+      nivelActividad: this.mapNivelActividadDesdeEstiloVida(estiloVida),
+      objetivo: this.mapObjetivoClinico(perfilClinico?.objetivo),
+      condicionFemenina: {
+        embarazo: perfilClinico?.embarazo ?? null,
+        trimestre_embarazo: perfilClinico?.trimestre_embarazo ?? null,
+        fase_menstrual: perfilClinico?.fase_menstrual ?? null,
+      },
+      enfermedades: perfilClinico?.enfermedades_cronicas,
+      alergias: perfilClinico?.alergias,
+      medicamentos: perfilClinico?.medicamentos,
+      preferenciasLogistica: {
+        dieta: {
+          tipo_dieta: solicitud.preferencias_dieta.tipo_dieta,
+          comidas_por_dia: solicitud.preferencias_dieta.comidas_por_dia,
+          excluir_ingredientes_gusto:
+            solicitud.preferencias_dieta.excluir_ingredientes_gusto ?? [],
+          meta_nutricional:
+            solicitud.preferencias_dieta.meta_nutricional ?? null,
+          control_calorias:
+            solicitud.preferencias_dieta.control_calorias ?? null,
+          preparacion_comida:
+            solicitud.preferencias_dieta.preparacion_comida ?? null,
+        },
+        estilo_vida: estiloVida ?? null,
+      },
+    };
+  }
+
+  private mapSexoBiologico(sexo: PerfilFisicoDto['sexo_biologico']) {
+    return sexo === 'femenino' ? 'female' : 'male';
+  }
+
+  private mapObjetivoClinico(objetivo?: PerfilClinicoDto['objetivo']) {
+    if (!objetivo) {
+      return undefined;
+    }
+
+    switch (objetivo) {
+      case 'bajar_peso':
+        return 'perdida_grasa';
+      case 'subir_peso':
+        return 'ganancia_muscular';
+      case 'mantener':
+        return 'mantenimiento';
+      default:
+        return undefined;
+    }
+  }
+
+  private mapNivelActividadDesdeEstiloVida(estiloVida?: EstiloVidaDto) {
+    if (!estiloVida) {
+      return undefined;
+    }
+
+    switch (estiloVida.frecuencia_ejercicio_semana) {
+      case '1_2':
+        return 'ligeramente_activo' as const;
+      case '3_4':
+        return 'moderado' as const;
+      case '5_plus':
+        return 'activo' as const;
+      default:
+        return undefined;
+    }
+  }
+
+  private toUserId(usuarioId: number): string | null {
+    const raw = String(usuarioId).trim();
+    const uuidV4Regex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+    return uuidV4Regex.test(raw) ? raw : null;
   }
 }
