@@ -91,7 +91,7 @@ export class DietPlanOrchestratorService {
     );
 
     const objetivoCaloricoDiario = Math.round(
-      calculosNutricionales.caloriasSugeridas,
+      calculosNutricionales.caloriasFinalAjustadas,
     );
     const caloriasPorComida = Math.round(
       objetivoCaloricoDiario / solicitud.preferencias_dieta.comidas_por_dia,
@@ -162,9 +162,6 @@ export class DietPlanOrchestratorService {
 
     return {
       objetivo: perfilClinico.objetivo,
-      enfermedades_cronicas: perfilClinico.enfermedades_cronicas,
-      alergias: perfilClinico.alergias,
-      medicamentos: perfilClinico.medicamentos,
       embarazo: perfilClinico.embarazo,
       trimestre_embarazo: perfilClinico.trimestre_embarazo,
       fase_menstrual: perfilClinico.fase_menstrual,
@@ -206,10 +203,15 @@ export class DietPlanOrchestratorService {
     const embarazo = perfilClinico?.embarazo
       ? ` Embarazo activo${perfilClinico.trimestre_embarazo ? `, trimestre ${perfilClinico.trimestre_embarazo}` : ''}.`
       : '';
+    const objetivo = perfilClinico?.objetivo
+      ? ` OBJETIVO: ${this.formatearObjetivo(perfilClinico.objetivo)}.`
+      : '';
 
     return [
       `Paciente ${solicitud.perfil_fisico.sexo_biologico} de ${solicitud.perfil_fisico.edad} anios.`,
       `TMB base aproximada ${Math.round(calculos.tmbBase)} kcal y gasto total estimado ${Math.round(calculos.gastoEnergeticoTotal)} kcal.`,
+      `OBJETIVO CALÓRICO FINAL: ${Math.round(calculos.caloriasFinalAjustadas)} kcal/día (ajuste por objetivo: ${calculos.ajusteObjetivo > 0 ? '+' : ''}${Math.round(calculos.ajusteObjetivo)} kcal).`,
+      objetivo,
       embarazo,
       faseMenstrual,
       restricciones.resumen_clinico,
@@ -217,6 +219,19 @@ export class DietPlanOrchestratorService {
       .join(' ')
       .replace(/\s+/g, ' ')
       .trim();
+  }
+
+  private formatearObjetivo(objetivo: string): string {
+    switch (objetivo) {
+      case 'bajar_peso':
+        return 'Bajar de peso (déficit calórico de 500 kcal/día)';
+      case 'subir_peso':
+        return 'Subir de peso / volumen muscular (superávit calórico de 300 kcal/día)';
+      case 'mantener':
+        return 'Mantener peso actual (sin variación calórica)';
+      default:
+        return objetivo;
+    }
   }
 
   private calcularMacrosDiariosEstimados(
@@ -240,8 +255,9 @@ export class DietPlanOrchestratorService {
       'ESTRUCTURA REQUERIDA: cada dia debe tener exactamente 3 comidas (desayuno, comida, cena).',
       'NO INVENTES RECETAS: solo puedes usar las que vienen en el catalogo. Solo selecciona recetas con IDs presentes en el catalogo.',
       'SEGURIDAD: ninguna receta seleccionada puede contener los ingredientes_prohibidos. Valida cada ingrediente antes de incluir.',
-      'MACROS: la suma de los macros de las recetas diarias debe acercarse lo mas posible al objetivo_calorico_diario.',
-      'RECOMENDACIONES: incluye un array de recomendaciones personalizadas basadas en ingredientes_prohibidos y limites_nutricionales_diarios. Advierte sobre productos a evitar y sus razones.',
+      'MACROS: la suma de los macros de las recetas diarias debe acercarse lo mas posible al objetivo_calorico_diario. Este objetivo ya incluye ajustes por el objetivo del paciente (bajar, subir o mantener peso).',
+      'OBJETIVO CALORICO: respeta siempre el objetivo_calorico_diario proporcionado. Si es menor a lo normal, el paciente intenta bajar de peso. Si es mayor, intenta subir. Si es aproximado al gasto normal, intenta mantener.',
+      'RECOMENDACIONES: incluye un array de recomendaciones personalizadas basadas en ingredientes_prohibidos, limites_nutricionales_diarios y el OBJETIVO del paciente. Para bajar peso: recomendaciones sobre deficit calórico. Para subir: sobre proteína e hidratos. Para mantener: sobre equilibrio nutricional.',
       'TRADUCCION: responde con los nombres de recetas traducidos al espanol, sin alterar los IDs ni valores numericos.',
       'FORMATO RESPUESTA: JSON con estructura: {plan_diario: {lunes,martes,miercoles,jueves,viernes: {desayuno,comida,cena: [{id,nombre_traducido,calorias,proteina,carbohidratos,grasas,sodio}]}}, resumen_calorico_diario: number, recomendaciones_personalizadas: [string], advertencias_ingredientes: [string]}.',
     ].join(' ');

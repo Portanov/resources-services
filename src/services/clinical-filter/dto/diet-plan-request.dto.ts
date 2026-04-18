@@ -7,7 +7,6 @@ import {
   IsInt,
   IsObject,
   IsOptional,
-  IsString,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -25,6 +24,7 @@ export type TipoDietaDto =
   | 'vegana'
   | 'mediterranea'
   | 'keto';
+export type ObjetivoDietaDto = 'bajar_peso' | 'subir_peso' | 'mantener';
 
 export class PerfilFisicoDto {
   @Type(() => Number)
@@ -51,8 +51,8 @@ export class PerfilFisicoDto {
 
 export class PerfilClinicoDto {
   @IsOptional()
-  @IsString()
-  objetivo?: string;
+  @IsIn(['bajar_peso', 'subir_peso', 'mantener'])
+  objetivo?: ObjetivoDietaDto;
 
   @IsOptional()
   @IsArray()

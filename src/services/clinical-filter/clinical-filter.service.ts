@@ -3,8 +3,10 @@ import { Injectable, Logger } from '@nestjs/common';
 // Idealmente, importas el JSON desde un archivo local
 import * as diccionarioClinico from './data/clinical-dictionary.json';
 
+export type ObjetivoCalculo = 'bajar_peso' | 'subir_peso' | 'mantener';
+
 export interface PerfilClinicoCalculable {
-  objetivo?: string;
+  objetivo?: ObjetivoCalculo;
   enfermedades_cronicas?: string[];
   medicamentos?: string[];
   alergias?: string[];

@@ -49,6 +49,15 @@ export interface PlanDietaGenerado {
   advertencias_ingredientes: string[];
 }
 
+const DIAS_PLAN = [
+  'lunes',
+  'martes',
+  'miercoles',
+  'jueves',
+  'viernes',
+] as const;
+const COMIDAS_DIA = ['desayuno', 'comida', 'cena'] as const;
+
 @Injectable()
 export class GeminiClientService {
   constructor(private readonly configService: ConfigService) {}
@@ -137,6 +146,72 @@ export class GeminiClientService {
       });
     }
 
-    return planDieta;
+    return this.normalizarPlanDieta(planDieta);
+  }
+
+  private normalizarPlanDieta(plan: PlanDietaGenerado): PlanDietaGenerado {
+    const planDiario = (plan.plan_diario ?? {}) as Partial<PlanDiario>;
+    const planDiarioNormalizado = {} as PlanDiario;
+
+    for (const dia of DIAS_PLAN) {
+      const comidasDia =
+        (planDiario[dia] as Partial<ComidasDia> | undefined) ?? {};
+      const comidasNormalizadas = {} as ComidasDia;
+
+      for (const comida of COMIDAS_DIA) {
+        const recetas = (comidasDia[comida] ?? []) as unknown[];
+        comidasNormalizadas[comida] = recetas
+          .filter((receta) => receta && typeof receta === 'object')
+          .map((receta) => this.normalizarReceta(receta as Partial<RecetaDia>));
+      }
+
+      planDiarioNormalizado[dia] = comidasNormalizadas;
+    }
+
+    return {
+      plan_diario: planDiarioNormalizado,
+      resumen_calorico_diario: this.toNumber(plan.resumen_calorico_diario),
+      recomendaciones_personalizadas: Array.isArray(
+        plan.recomendaciones_personalizadas,
+      )
+        ? plan.recomendaciones_personalizadas.filter(
+            (item) => typeof item === 'string',
+          )
+        : [],
+      advertencias_ingredientes: Array.isArray(plan.advertencias_ingredientes)
+        ? plan.advertencias_ingredientes.filter(
+            (item) => typeof item === 'string',
+          )
+        : [],
+    };
+  }
+
+  private normalizarReceta(receta: Partial<RecetaDia>): RecetaDia {
+    return {
+      id: receta.id ? String(receta.id) : '',
+      nombre_traducido: receta.nombre_traducido
+        ? String(receta.nombre_traducido)
+        : 'Receta sin nombre',
+      calorias: this.toNumber(receta.calorias),
+      proteina: this.toNumber(receta.proteina),
+      carbohidratos: this.toNumber(receta.carbohidratos),
+      grasas: this.toNumber(receta.grasas),
+      sodio: this.toNumber(receta.sodio),
+    };
+  }
+
+  private toNumber(value: unknown): number {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+
+    return 0;
   }
 }

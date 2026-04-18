@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { NutricionalCalculationDto } from './dto/nutricional-calculation.dto';
+import type { ObjetivoCalculo } from '../clinical-filter/clinical-filter.service';
 
 export type SexoBiologico = 'masculino' | 'femenino';
 export type NivelActividad =
@@ -24,6 +25,7 @@ export interface PerfilFisicoCalculable {
 }
 
 export interface PerfilClinicoCalculable {
+  objetivo?: ObjetivoCalculo;
   embarazo?: boolean;
   trimestre_embarazo?: 1 | 2 | 3;
   fase_menstrual?: FaseMenstrual;
@@ -40,6 +42,8 @@ export interface NutricionalCalculoExtendido extends NutricionalCalculationResul
   factorActividad: number;
   gastoEnergeticoTotal: number;
   caloriasSugeridas: number;
+  ajusteObjetivo: number;
+  caloriasFinalAjustadas: number;
 }
 
 @Injectable()
@@ -72,6 +76,12 @@ export class NutricionalCalculatorService {
         perfilClinico,
       );
 
+    const caloriasSugeridas = gastoEnergeticoTotal + extraKcal;
+    const ajusteObjetivo = this.applyObjectiveAdjustment(
+      perfilClinico?.objetivo,
+    );
+    const caloriasFinalAjustadas = caloriasSugeridas + ajusteObjetivo;
+
     return {
       tmbBase,
       ajusteFemeninoKcal: extraKcal,
@@ -79,7 +89,9 @@ export class NutricionalCalculatorService {
       detalles,
       factorActividad,
       gastoEnergeticoTotal,
-      caloriasSugeridas: gastoEnergeticoTotal + extraKcal,
+      caloriasSugeridas,
+      ajusteObjetivo,
+      caloriasFinalAjustadas,
     };
   }
 
@@ -159,6 +171,18 @@ export class NutricionalCalculatorService {
     }
 
     return { extraKcal, detalles };
+  }
+
+  private applyObjectiveAdjustment(objetivo?: ObjetivoCalculo): number {
+    switch (objetivo) {
+      case 'bajar_peso':
+        return -500; // Déficit de 500 kcal/día ~500g por semana
+      case 'subir_peso':
+        return 300; // Superávit de 300 kcal/día ~250-300g por semana
+      case 'mantener':
+      default:
+        return 0;
+    }
   }
 
   private resolveActivityFactor(nivelActividad: NivelActividad): number {
