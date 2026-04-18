@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { NutricionalCalculationDto } from './dto/nutricional-calculation.dto';
+import type { ObjetivoCalculo } from '../clinical-filter/clinical-filter.service';
 
 export type SexoBiologico = 'masculino' | 'femenino';
 export type NivelActividad =
@@ -14,19 +15,28 @@ export type FaseMenstrual =
   | 'lutea'
   | 'menstrual'
   | 'none';
+export type FrecuenciaEntrenamiento = '1_2' | '3_4' | '5_plus';
+export type HorasEntrenamientoDiario = '30min' | '1hr' | '2hrs' | 'flexible';
 
 export interface PerfilFisicoCalculable {
   edad: number;
   peso_kg: number;
   altura_cm: number;
   sexo_biologico: SexoBiologico;
-  nivel_actividad: NivelActividad;
 }
 
 export interface PerfilClinicoCalculable {
+  objetivo?: ObjetivoCalculo;
+  fuma?: boolean;
+  consume_alcohol?: boolean;
   embarazo?: boolean;
   trimestre_embarazo?: 1 | 2 | 3;
   fase_menstrual?: FaseMenstrual;
+}
+
+export interface EstiloVidaCalculable {
+  frecuencia_ejercicio_semana: FrecuenciaEntrenamiento;
+  horas_entrenamiento_diario: HorasEntrenamientoDiario;
 }
 
 export interface NutricionalCalculationResult {
@@ -37,9 +47,14 @@ export interface NutricionalCalculationResult {
 }
 
 export interface NutricionalCalculoExtendido extends NutricionalCalculationResult {
+  nivelActividadResuelto: NivelActividad;
   factorActividad: number;
   gastoEnergeticoTotal: number;
   caloriasSugeridas: number;
+  ajusteConsumos: number;
+  ajusteObjetivo: number;
+  caloriasFinalAjustadas: number;
+  objetivosMicronutrientes: string[];
 }
 
 @Injectable()
@@ -60,27 +75,121 @@ export class NutricionalCalculatorService {
   calculateFromProfile(
     perfilFisico: PerfilFisicoCalculable,
     perfilClinico?: PerfilClinicoCalculable | null,
+    estiloVida?: EstiloVidaCalculable | null,
   ): NutricionalCalculoExtendido {
     const tmbBase = this.calculateMifflinStJeorFromProfile(perfilFisico);
-    const factorActividad = this.resolveActivityFactor(
-      perfilFisico.nivel_actividad,
-    );
+    const nivelActividadResuelto =
+      this.resolveActivityLevelFromLifestyle(estiloVida);
+    const factorActividad = this.resolveActivityFactor(nivelActividadResuelto);
     const gastoEnergeticoTotal = tmbBase * factorActividad;
     const { extraKcal, detalles } =
       this.calculateFemaleConditionAdjustmentsFromProfile(
         perfilFisico.sexo_biologico,
         perfilClinico,
       );
+    const { ajusteConsumos, detallesConsumo, objetivosMicronutrientes } =
+      this.calculateLifestyleConsumptionAdjustments(perfilClinico);
+
+    const caloriasSugeridas = gastoEnergeticoTotal + extraKcal + ajusteConsumos;
+    const ajusteObjetivo = this.applyObjectiveAdjustment(
+      perfilClinico?.objetivo,
+    );
+    const caloriasFinalAjustadas = caloriasSugeridas + ajusteObjetivo;
 
     return {
       tmbBase,
       ajusteFemeninoKcal: extraKcal,
       tmbAjustada: tmbBase + extraKcal,
-      detalles,
+      detalles: [...detalles, ...detallesConsumo],
+      nivelActividadResuelto,
       factorActividad,
       gastoEnergeticoTotal,
-      caloriasSugeridas: gastoEnergeticoTotal + extraKcal,
+      caloriasSugeridas,
+      ajusteConsumos,
+      ajusteObjetivo,
+      caloriasFinalAjustadas,
+      objetivosMicronutrientes,
     };
+  }
+
+  private calculateLifestyleConsumptionAdjustments(
+    perfilClinico?: PerfilClinicoCalculable | null,
+  ): {
+    ajusteConsumos: number;
+    detallesConsumo: string[];
+    objetivosMicronutrientes: string[];
+  } {
+    if (!perfilClinico) {
+      return {
+        ajusteConsumos: 0,
+        detallesConsumo: [],
+        objetivosMicronutrientes: [],
+      };
+    }
+
+    let ajusteConsumos = 0;
+    const detallesConsumo: string[] = [];
+    const micronutrientes = new Set<string>();
+
+    if (perfilClinico.fuma) {
+      ajusteConsumos += 80;
+      detallesConsumo.push(
+        'Fumador activo: +80 kcal para soporte nutricional.',
+      );
+      micronutrientes.add('vitamina C');
+      micronutrientes.add('vitamina E');
+      micronutrientes.add('folato');
+      micronutrientes.add('omega-3');
+    }
+
+    if (perfilClinico.consume_alcohol) {
+      ajusteConsumos += 120;
+      detallesConsumo.push(
+        'Consumo de alcohol: +120 kcal para compensar densidad nutricional.',
+      );
+      micronutrientes.add('vitamina B1 (tiamina)');
+      micronutrientes.add('vitamina B6');
+      micronutrientes.add('folato');
+      micronutrientes.add('magnesio');
+      micronutrientes.add('zinc');
+    }
+
+    return {
+      ajusteConsumos,
+      detallesConsumo,
+      objetivosMicronutrientes: Array.from(micronutrientes),
+    };
+  }
+
+  private resolveActivityLevelFromLifestyle(
+    estiloVida?: EstiloVidaCalculable | null,
+  ): NivelActividad {
+    if (!estiloVida) {
+      return 'sedentario';
+    }
+
+    const { frecuencia_ejercicio_semana, horas_entrenamiento_diario } =
+      estiloVida;
+
+    if (frecuencia_ejercicio_semana === '5_plus') {
+      return horas_entrenamiento_diario === '30min' ? 'activo' : 'muy_activo';
+    }
+
+    if (frecuencia_ejercicio_semana === '3_4') {
+      if (horas_entrenamiento_diario === '2hrs') {
+        return 'muy_activo';
+      }
+      if (horas_entrenamiento_diario === '1hr') {
+        return 'activo';
+      }
+      return 'moderado';
+    }
+
+    if (horas_entrenamiento_diario === '2hrs') {
+      return 'activo';
+    }
+
+    return horas_entrenamiento_diario === '30min' ? 'ligero' : 'moderado';
   }
 
   private calculateMifflinStJeor(input: NutricionalCalculationDto): number {
@@ -159,6 +268,18 @@ export class NutricionalCalculatorService {
     }
 
     return { extraKcal, detalles };
+  }
+
+  private applyObjectiveAdjustment(objetivo?: ObjetivoCalculo): number {
+    switch (objetivo) {
+      case 'bajar_peso':
+        return -500; // Déficit de 500 kcal/día ~500g por semana
+      case 'subir_peso':
+        return 300; // Superávit de 300 kcal/día ~250-300g por semana
+      case 'mantener':
+      default:
+        return 0;
+    }
   }
 
   private resolveActivityFactor(nivelActividad: NivelActividad): number {

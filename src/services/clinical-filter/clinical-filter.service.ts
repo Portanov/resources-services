@@ -3,11 +3,15 @@ import { Injectable, Logger } from '@nestjs/common';
 // Idealmente, importas el JSON desde un archivo local
 import * as diccionarioClinico from './data/clinical-dictionary.json';
 
+export type ObjetivoCalculo = 'bajar_peso' | 'subir_peso' | 'mantener';
+
 export interface PerfilClinicoCalculable {
-  objetivo?: string;
+  objetivo?: ObjetivoCalculo;
   enfermedades_cronicas?: string[];
   medicamentos?: string[];
   alergias?: string[];
+  fuma?: boolean;
+  consume_alcohol?: boolean;
   embarazo?: boolean;
   trimestre_embarazo?: 1 | 2 | 3;
   fase_menstrual?: 'folicular' | 'ovulatoria' | 'lutea' | 'menstrual' | 'none';
@@ -172,6 +176,21 @@ export class FiltroClinicoService {
 
     if (datos.embarazo && datos.trimestre_embarazo === 2) {
       explicacionesMedicas.add('Embarazo segundo trimestre: +340 kcal.');
+    }
+
+    if (datos.fuma) {
+      explicacionesMedicas.add(
+        'Paciente fumador: reforzar vitamina C, vitamina E, folato y omega-3 en la dieta.',
+      );
+    }
+
+    if (datos.consume_alcohol) {
+      explicacionesMedicas.add(
+        'Consumo de alcohol reportado: reforzar tiamina (B1), B6, folato, magnesio y zinc.',
+      );
+      limitados.add('beer');
+      limitados.add('alcohol');
+      limitados.add('wine');
     }
 
     return {

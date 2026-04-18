@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  Allow,
   ArrayNotEmpty,
   IsArray,
   IsBoolean,
@@ -7,24 +8,23 @@ import {
   IsInt,
   IsObject,
   IsOptional,
-  IsString,
   Min,
   ValidateNested,
 } from 'class-validator';
 
 export type SexoBiologicoDto = 'masculino' | 'femenino';
-export type NivelActividadDto =
-  | 'sedentario'
-  | 'ligero'
-  | 'moderado'
-  | 'activo'
-  | 'muy_activo';
 export type TipoDietaDto =
   | 'omnivora'
   | 'vegetariana'
   | 'vegana'
   | 'mediterranea'
   | 'keto';
+export type ObjetivoDietaDto = 'bajar_peso' | 'subir_peso' | 'mantener';
+export type FrecuenciaEntrenamientoDto = '1_2' | '3_4' | '5_plus';
+export type HorasEntrenamientoDiarioDto = '30min' | '1hr' | '2hrs' | 'flexible';
+export type MetaNutricionalFrontDto = string | number;
+export type ControlCaloriasFrontDto = string | number;
+export type PreparacionComidaFrontDto = string | number;
 
 export class PerfilFisicoDto {
   @Type(() => Number)
@@ -44,15 +44,12 @@ export class PerfilFisicoDto {
 
   @IsIn(['masculino', 'femenino'])
   sexo_biologico!: SexoBiologicoDto;
-
-  @IsIn(['sedentario', 'ligero', 'moderado', 'activo', 'muy_activo'])
-  nivel_actividad!: NivelActividadDto;
 }
 
 export class PerfilClinicoDto {
   @IsOptional()
-  @IsString()
-  objetivo?: string;
+  @IsIn(['bajar_peso', 'subir_peso', 'mantener'])
+  objetivo?: ObjetivoDietaDto;
 
   @IsOptional()
   @IsArray()
@@ -70,6 +67,16 @@ export class PerfilClinicoDto {
   @IsOptional()
   @Type(() => Boolean)
   @IsBoolean()
+  fuma?: boolean;
+
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  consume_alcohol?: boolean;
+
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
   embarazo?: boolean;
 
   @IsOptional()
@@ -80,6 +87,14 @@ export class PerfilClinicoDto {
   @IsOptional()
   @IsIn(['folicular', 'ovulatoria', 'lutea', 'menstrual', 'none'])
   fase_menstrual?: 'folicular' | 'ovulatoria' | 'lutea' | 'menstrual' | 'none';
+}
+
+export class EstiloVidaDto {
+  @IsIn(['1_2', '3_4', '5_plus'])
+  frecuencia_ejercicio_semana!: FrecuenciaEntrenamientoDto;
+
+  @IsIn(['30min', '1hr', '2hrs', 'flexible'])
+  horas_entrenamiento_diario!: HorasEntrenamientoDiarioDto;
 }
 
 export class PreferenciasDietaDto {
@@ -94,11 +109,25 @@ export class PreferenciasDietaDto {
 
   @IsIn(['omnivora', 'vegetariana', 'vegana', 'mediterranea', 'keto'])
   tipo_dieta!: TipoDietaDto;
+
+  @IsOptional()
+  @Allow()
+  meta_nutricional?: MetaNutricionalFrontDto;
+
+  @IsOptional()
+  @Allow()
+  control_calorias?: ControlCaloriasFrontDto;
+
+  @IsOptional()
+  @Allow()
+  preparacion_comida?: PreparacionComidaFrontDto;
 }
 
 export class SolicitudPlanDietaDto {
-  @IsString()
-  usuario_id!: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  usuario_id!: number;
 
   @ValidateNested()
   @Type(() => PerfilFisicoDto)
@@ -113,4 +142,10 @@ export class SolicitudPlanDietaDto {
   @ValidateNested()
   @Type(() => PreferenciasDietaDto)
   preferencias_dieta!: PreferenciasDietaDto;
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => EstiloVidaDto)
+  estilo_vida?: EstiloVidaDto;
 }

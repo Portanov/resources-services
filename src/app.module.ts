@@ -27,6 +27,7 @@ import { ExercisePlanModule } from './services/excercise-plan/excercise-plan.mod
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         uri: configService.get<string>('MONGODB_URI'),
+        dbName: 'holos',
       }),
       inject: [ConfigService],
     }),

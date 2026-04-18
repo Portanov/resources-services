@@ -50,6 +50,15 @@ export interface PlanDietaGenerado {
   advertencias_ingredientes: string[];
 }
 
+const DIAS_PLAN = [
+  'lunes',
+  'martes',
+  'miercoles',
+  'jueves',
+  'viernes',
+] as const;
+const COMIDAS_DIA = ['desayuno', 'comida', 'cena'] as const;
+
 export interface Ejercicio {
   nombre: string;
   series: number;
@@ -162,72 +171,83 @@ export class GeminiClientService {
       });
     }
 
-    return planDieta;
+    return this.normalizarPlanDieta(planDieta);
   }
 
-  async generarPlanEntrenamiento(payload: GeminiExercisePayload): Promise<PlanEjercicioGenerado> {
-    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
-    
-    if (!apiKey) {
-      throw new InternalServerErrorException('Falta GEMINI_API_KEY en variables de entorno');
-    }
+  private normalizarPlanDieta(plan: PlanDietaGenerado): PlanDietaGenerado {
+    const planDiario = (plan.plan_diario ?? {}) as Partial<PlanDiario>;
+    const planDiarioNormalizado = {} as PlanDiario;
 
-    const body = {
-      systemInstruction: {
-        parts: [{ text: payload.gemini_request.system_instruction }],
-      },
-      contents: [
-        {
-          role: 'user',
-          parts: [{
-            text: `CONTEXTO_JSON:\n${payload.gemini_request.contexto_string}\n\nTAREA:\n${payload.gemini_request.prompt_usuario}`,
-          }],
-        },
-      ],
-      generationConfig: {
-        temperature: 0.3, // Un poco más de creatividad para variedad de ejercicios
-        responseMimeType: 'application/json',
-      },
-    };
+    for (const dia of DIAS_PLAN) {
+      const comidasDia =
+        (planDiario[dia] as Partial<ComidasDia> | undefined) ?? {};
+      const comidasNormalizadas = {} as ComidasDia;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${payload.gemini_request.model}:generateContent?key=${apiKey}`;
+      for (const comida of COMIDAS_DIA) {
+        const recetas = (comidasDia[comida] ?? []) as unknown[];
+        comidasNormalizadas[comida] = recetas
+          .filter((receta) => receta && typeof receta === 'object')
+          .flatMap((receta) => {
+            const recetaNormalizada = this.normalizarReceta(
+              receta as Partial<RecetaDia>,
+            );
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-
-    const data: any = await response.json();
-
-    if (!response.ok) {
-      throw new InternalServerErrorException({
-        message: 'Error en API Gemini (Exercise)',
-        details: data,
-      });
-    }
-
-    // Extraer el texto de la respuesta
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) {
-      throw new InternalServerErrorException('Gemini no devolvió contenido válido');
-    }
-
-    try {
-      const planParsed = JSON.parse(text) as PlanEjercicioGenerado;
-
-      // VALIDACIÓN ESPECÍFICA DE EJERCICIO
-      if (!planParsed.rutina_semanal) {
-        throw new Error('Falta la propiedad "rutina_semanal"');
+            return recetaNormalizada ? [recetaNormalizada] : [];
+          });
       }
 
-      return planParsed;
-    } catch (error) {
-      throw new InternalServerErrorException({
-        message: 'La estructura de ejercicio devuelta por Gemini es inválida',
-        rawText: text,
-        error: error instanceof Error ? error.message : String(error)
-      });
+      planDiarioNormalizado[dia] = comidasNormalizadas;
     }
+
+    return {
+      plan_diario: planDiarioNormalizado,
+      resumen_calorico_diario: this.toNumber(plan.resumen_calorico_diario),
+      recomendaciones_personalizadas: Array.isArray(
+        plan.recomendaciones_personalizadas,
+      )
+        ? plan.recomendaciones_personalizadas.filter(
+            (item) => typeof item === 'string',
+          )
+        : [],
+      advertencias_ingredientes: Array.isArray(plan.advertencias_ingredientes)
+        ? plan.advertencias_ingredientes.filter(
+            (item) => typeof item === 'string',
+          )
+        : [],
+    };
+  }
+
+  private normalizarReceta(receta: Partial<RecetaDia>): RecetaDia | null {
+    const idNormalizado = receta.id ? String(receta.id).trim() : '';
+    if (!idNormalizado) {
+      return null;
+    }
+
+    return {
+      id: idNormalizado,
+      nombre_traducido: receta.nombre_traducido
+        ? String(receta.nombre_traducido)
+        : 'Receta sin nombre',
+      calorias: this.toNumber(receta.calorias),
+      proteina: this.toNumber(receta.proteina),
+      carbohidratos: this.toNumber(receta.carbohidratos),
+      grasas: this.toNumber(receta.grasas),
+      sodio: this.toNumber(receta.sodio),
+    };
+  }
+
+  private toNumber(value: unknown): number {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+
+    return 0;
   }
 }
