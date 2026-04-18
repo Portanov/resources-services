@@ -119,6 +119,23 @@ export class RecetasRepositoryService implements OnModuleInit {
 
         return true;
       })
+      .sort((left, right) => {
+        const diferenciaCaloricaLeft = Math.abs(
+          (left.calories ?? 0) - filtros.kcal_objetivo,
+        );
+        const diferenciaCaloricaRight = Math.abs(
+          (right.calories ?? 0) - filtros.kcal_objetivo,
+        );
+
+        if (diferenciaCaloricaLeft !== diferenciaCaloricaRight) {
+          return diferenciaCaloricaLeft - diferenciaCaloricaRight;
+        }
+
+        const ratingLeft = left.rating ?? 0;
+        const ratingRight = right.rating ?? 0;
+
+        return ratingRight - ratingLeft;
+      })
       .slice(0, filtros.maxResultados ?? 15);
   }
 

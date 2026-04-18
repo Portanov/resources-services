@@ -97,11 +97,11 @@ export class DietPlanOrchestratorService {
 
     const opcionesBase = this.recetasRepositoryService.buscarRecetasSeguras({
       kcal_objetivo: caloriasPorComida,
-      margen: 150,
+      margen: 180,
       ingredientes_prohibidos: ingredientesProhibidos,
       etiquetas_requeridas:
         etiquetasRequeridas.length > 0 ? etiquetasRequeridas : undefined,
-      maxResultados: 15,
+      maxResultados: 25,
     });
 
     const catalogoRecetasPermitidas: CatalogoRecetaPermitidaPayload[] =
