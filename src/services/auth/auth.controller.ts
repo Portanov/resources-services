@@ -14,6 +14,7 @@ import {
   RegisterUserDto,
   UpdateUserProfileDto,
 } from './dto/user.dto';
+import { PlansService } from '../plans/plans.service';
 import { UsersService } from './users.service';
 
 @Controller('auth')
@@ -22,6 +23,7 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
     private readonly clinicProfileService: ClinicProfileService,
+    private readonly plansService: PlansService,
   ) {}
 
   @Post('register')
@@ -50,5 +52,10 @@ export class AuthController {
   @Get('users/:id/clinical-profile')
   getClinicalProfile(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.clinicProfileService.getClinicProfileByUserId(id);
+  }
+
+  @Get('users/:id/diet')
+  getUserDiet(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.plansService.getDietByUser(id);
   }
 }

@@ -17,6 +17,7 @@ export class PlansService {
   async getDietByUser(userId: string): Promise<DietPlanDocument> {
     const diet = await this.dietPlanModel
       .findOne({ usuario_id: userId })
+      .sort({ createdAt: -1 })
       .exec();
     if (!diet) {
       throw new NotFoundException('No se encontro dieta');
