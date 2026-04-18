@@ -30,15 +30,15 @@ async function bootstrap() {
     }),
   );
 
-  await app.register(helmet, {
+  await app.register(helmet as any, {
     contentSecurityPolicy: process.env.NODE_ENV === 'production',
   });
 
-  await app.register(compress, {
+  await app.register(compress as any, {
     encodings: ['gzip', 'deflate', 'br'],
   });
 
-  await app.register(rateLimit, {
+  await app.register(rateLimit as any, {
     max: Number(process.env.RATE_LIMIT_MAX ?? 100),
     timeWindow: process.env.RATE_LIMIT_WINDOW ?? '1 minute',
   });
