@@ -4,7 +4,8 @@ import { AppService } from './app.service';
 import { ClinicalFilterModule } from './services/clinical-filter/clinical-filter.module';
 import { NutricionalCalculatorModule } from './services/nutricional-calculator/nutricional-calculator.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { MongooseModule } from '@nestjs/mongoose';
 @Module({
   imports: [
     NutricionalCalculatorModule,
@@ -19,6 +20,13 @@ import { ConfigModule } from '@nestjs/config';
       autoLoadEntities: true,
       synchronize: false,
       logging: false,
+    }),
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        uri: configService.get<string>('MONGODB_URI'),
+      }),
+      inject: [ConfigService],
     }),
   ],
   controllers: [AppController],
