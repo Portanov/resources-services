@@ -10,9 +10,13 @@ export class ExercisePlanController {
   ) {}
 
   @Post('ejercicios')
-  construirPlan(
+  async construirPlan(
     @Body() solicitud: SolicitudPlanEjercicioDto,
-  ): GeminiExercisePayload {
+  ): Promise<GeminiExercisePayload> {
+    await this.exercisePlanOrchestratorService.sincronizarPerfilClinicoDesdeEjercicio(
+      solicitud,
+    );
+
     return this.exercisePlanOrchestratorService.construirPayloadGemini(
       solicitud,
     );
@@ -20,6 +24,10 @@ export class ExercisePlanController {
 
   @Post('ejercicios/gemini')
   async construirPlanYGenerar(@Body() solicitud: SolicitudPlanEjercicioDto) {
+    await this.exercisePlanOrchestratorService.sincronizarPerfilClinicoDesdeEjercicio(
+      solicitud,
+    );
+
     return this.exercisePlanOrchestratorService.construirYGenerarConGemini(
       solicitud,
     );

@@ -8,6 +8,7 @@ import {
   IsInt,
   IsObject,
   IsOptional,
+  IsUUID,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -124,10 +125,8 @@ export class PreferenciasDietaDto {
 }
 
 export class SolicitudPlanDietaDto {
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  usuario_id!: number;
+  @IsUUID('4')
+  usuario_id!: string;
 
   @ValidateNested()
   @Type(() => PerfilFisicoDto)

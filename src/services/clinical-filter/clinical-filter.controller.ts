@@ -10,12 +10,22 @@ export class ClinicalFilterController {
   ) {}
 
   @Post('plan')
-  construirPlan(@Body() solicitud: SolicitudPlanDietaDto): GeminiDietPayload {
+  async construirPlan(
+    @Body() solicitud: SolicitudPlanDietaDto,
+  ): Promise<GeminiDietPayload> {
+    await this.dietPlanOrchestratorService.sincronizarPerfilClinicoDesdeDieta(
+      solicitud,
+    );
+
     return this.dietPlanOrchestratorService.construirPayloadGemini(solicitud);
   }
 
   @Post('plan/gemini')
   async construirPlanYGenerar(@Body() solicitud: SolicitudPlanDietaDto) {
+    await this.dietPlanOrchestratorService.sincronizarPerfilClinicoDesdeDieta(
+      solicitud,
+    );
+
     return this.dietPlanOrchestratorService.construirYGenerarConGemini(
       solicitud,
     );

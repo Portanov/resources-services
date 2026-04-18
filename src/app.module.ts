@@ -7,11 +7,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ExercisePlanModule } from './services/excercise-plan/excercise-plan.module';
+import { AuthModule } from './services/auth/auth.module';
 @Module({
   imports: [
+    AuthModule,
     NutricionalCalculatorModule,
     ClinicalFilterModule,
     ExercisePlanModule,
+    // Removed invalid character 'A'
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
