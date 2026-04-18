@@ -6,9 +6,13 @@ import { UserEntity } from './entities/user.entity';
 import { ClinicProfileEntity } from './entities/clinic-profile.entity';
 import { ClinicProfileService } from './clinic-profile.service';
 import { UsersService } from './users.service';
+import { PlansModule } from '../plans/plans.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([UserEntity, ClinicProfileEntity])],
+  imports: [
+    TypeOrmModule.forFeature([UserEntity, ClinicProfileEntity]),
+    PlansModule,
+  ],
   providers: [UsersService, AuthService, ClinicProfileService],
   controllers: [AuthController],
   exports: [AuthService, ClinicProfileService],
