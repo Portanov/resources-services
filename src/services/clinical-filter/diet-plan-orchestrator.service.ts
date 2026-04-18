@@ -21,6 +21,7 @@ import {
 } from './dto/diet-plan-request.dto';
 import { GeminiClientService } from './gemini-client.service';
 import type { PlanDietaGenerado } from './gemini-client.service';
+import { PlansService } from '../plans/plans.service';
 
 export interface MacronutrientesDiariosEstimados {
   proteina_g: number;
@@ -63,6 +64,7 @@ export class DietPlanOrchestratorService {
     private readonly nutricionalCalculatorService: NutricionalCalculatorService,
     private readonly recetasRepositoryService: RecetasRepositoryService,
     private readonly geminiClientService: GeminiClientService,
+    private readonly plansService: PlansService,
   ) {}
 
   construirPayloadGemini(solicitud: SolicitudPlanDietaDto): GeminiDietPayload {
@@ -251,6 +253,11 @@ export class DietPlanOrchestratorService {
   }> {
     const payload = this.construirPayloadGemini(solicitud);
     const planGenerado = await this.geminiClientService.generarPlan(payload);
+
+    await this.plansService.saveDiet({
+      usuario_id: solicitud.usuario_id,
+      ...planGenerado,
+    });
 
     return {
       payload_enviado_a_gemini: payload.gemini_request,

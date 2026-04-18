@@ -97,8 +97,10 @@ export class PreferenciasDietaDto {
 }
 
 export class SolicitudPlanDietaDto {
-  @IsString()
-  usuario_id!: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  usuario_id!: number;
 
   @ValidateNested()
   @Type(() => PerfilFisicoDto)

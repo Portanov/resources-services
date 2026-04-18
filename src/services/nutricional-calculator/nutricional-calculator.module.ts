@@ -3,9 +3,9 @@ import { NutricionalCalculatorController } from './nutricional-calculator.contro
 import { NutricionalCalculatorService } from './nutricional-calculator.service';
 
 @Module({
-    imports: [],
-    providers: [NutricionalCalculatorService],
-    exports: [NutricionalCalculatorService],
-    controllers: [NutricionalCalculatorController],
+  imports: [],
+  providers: [NutricionalCalculatorService],
+  exports: [NutricionalCalculatorService],
+  controllers: [NutricionalCalculatorController],
 })
-export class NutricionalCalculatorModule { }
+export class NutricionalCalculatorModule {}

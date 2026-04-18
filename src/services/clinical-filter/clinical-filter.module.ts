@@ -5,9 +5,10 @@ import { FiltroClinicoService } from './clinical-filter.service';
 import { NutricionalCalculatorModule } from '../nutricional-calculator/nutricional-calculator.module';
 import { RepositoryRecipesModule } from '../repository-recipes/repository-recipes.module';
 import { GeminiClientService } from './gemini-client.service';
+import { PlansModule } from '../plans/plans.module';
 
 @Module({
-  imports: [NutricionalCalculatorModule, RepositoryRecipesModule],
+  imports: [NutricionalCalculatorModule, RepositoryRecipesModule, PlansModule],
   providers: [
     GeminiClientService,
     FiltroClinicoService,
